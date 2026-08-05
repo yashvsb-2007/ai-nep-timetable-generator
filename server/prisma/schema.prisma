@@ -1,0 +1,278 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String
+  name          String
+  role          String   // COLLEGE_ADMIN, DEPT_ADMIN, HOD, FACULTY, STUDENT
+  departmentId  String?
+  phone         String?
+  avatarUrl     String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  facultyProfile Faculty?
+  studentProfile Student?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  hodName     String?
+  building    String?
+  createdAt   DateTime @default(now())
+
+  programs    Program[]
+  subjects    Subject[]
+  faculty     Faculty[]
+  students    Student[]
+  sections    Section[]
+}
+
+model Program {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  name          String   // B.Tech CSE, B.Sc Multidisciplinary, BA Liberal Arts
+  departmentId  String
+  durationYears Int      @default(4)
+  totalCredits  Int      @default(160)
+  createdAt     DateTime @default(now())
+
+  department    Department @relation(fields: [departmentId], references: [id])
+  courses       Course[]
+  students      Student[]
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  programId   String
+  semester    Int
+  credits     Int
+  createdAt   DateTime @default(now())
+
+  program     Program   @relation(fields: [programId], references: [id])
+  subjects    Subject[]
+}
+
+model Subject {
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  courseType         String   // MAJOR, MINOR, MULTIDISCIPLINARY, SEC, AEC, VAC, INTERNSHIP
+  credits            Int
+  weeklyLectures     Int      @default(3)
+  isLab              Boolean  @default(false)
+  labDuration        Int      @default(2)
+  departmentId       String
+  courseId           String?
+  requiredCapacity   Int      @default(30)
+
+  department         Department @relation(fields: [departmentId], references: [id])
+  course             Course?     @relation(fields: [courseId], references: [id])
+  faculty            FacultySubject[]
+  studentRegistrations StudentCourseRegistration[]
+  timetableSlots     TimetableSlot[]
+}
+
+model Classroom {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  building     String
+  floor        Int      @default(1)
+  capacity     Int      @default(60)
+  isLab        Boolean  @default(false)
+  hasProjector Boolean  @default(true)
+  isSmart      Boolean  @default(false)
+
+  timetableSlots TimetableSlot[]
+}
+
+model Faculty {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  employeeId      String   @unique
+  designation     String   // Professor, Assoc Prof, Asst Prof
+  departmentId    String
+  maxWeeklyHours  Int      @default(18)
+  maxDailyLectures Int     @default(4)
+  qualification   String?
+
+  user            User       @relation(fields: [userId], references: [id])
+  department      Department @relation(fields: [departmentId], references: [id])
+  subjects        FacultySubject[]
+  availabilities  FacultyAvailability[]
+  leaves          FacultyLeave[]
+  timetableSlots  TimetableSlot[]
+}
+
+model FacultySubject {
+  id        String  @id @default(uuid())
+  facultyId String
+  subjectId String
+
+  faculty   Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([facultyId, subjectId])
+}
+
+model FacultyAvailability {
+  id         String  @id @default(uuid())
+  facultyId  String
+  timeSlotId String
+  isPreferred Boolean @default(true) // true = preferred, false = unavailable
+
+  faculty    Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  timeSlot   TimeSlot @relation(fields: [timeSlotId], references: [id])
+}
+
+model FacultyLeave {
+  id        String   @id @default(uuid())
+  facultyId String
+  startDate DateTime
+  endDate   DateTime
+  reason    String
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+}
+
+model Student {
+  id             String   @id @default(uuid())
+  userId         String   @unique
+  rollNumber     String   @unique
+  abcAccountId   String?  @unique // Academic Bank of Credits ID
+  departmentId   String
+  programId      String
+  semester       Int      @default(1)
+  sectionId      String?
+  totalCreditsEarned Int  @default(0)
+
+  user           User       @relation(fields: [userId], references: [id])
+  department     Department @relation(fields: [departmentId], references: [id])
+  program        Program    @relation(fields: [programId], references: [id])
+  section        Section?   @relation(fields: [sectionId], references: [id])
+  registrations  StudentCourseRegistration[]
+}
+
+model StudentCourseRegistration {
+  id        String   @id @default(uuid())
+  studentId String
+  subjectId String
+  semester  Int
+  status    String   @default("ENROLLED") // ENROLLED, COMPLETED, DROPPED
+
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+}
+
+model Section {
+  id            String   @id @default(uuid())
+  name          String   // A, B, C, Multidisciplinary-Group1
+  departmentId  String
+  semester      Int
+  studentCount  Int      @default(40)
+
+  department    Department @relation(fields: [departmentId], references: [id])
+  students      Student[]
+  timetableSlots TimetableSlot[]
+}
+
+model TimeSlot {
+  id          String   @id @default(uuid())
+  dayOfWeek   String   // MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY
+  slotNumber  Int
+  startTime   String   // "09:00"
+  endTime     String   // "10:00"
+  isBreak     Boolean  @default(false)
+  breakType   String?  // LUNCH, TEA
+
+  availabilities FacultyAvailability[]
+  timetableSlots TimetableSlot[]
+}
+
+model Timetable {
+  id           String   @id @default(uuid())
+  academicYear String   // "2026-2027"
+  semester     Int
+  status       String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  version      Int      @default(1)
+  generatedBy  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  slots        TimetableSlot[]
+  conflictLogs ConflictLog[]
+}
+
+model TimetableSlot {
+  id          String   @id @default(uuid())
+  timetableId String
+  sectionId   String
+  subjectId   String
+  facultyId   String
+  classroomId String
+  timeSlotId  String
+
+  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+  section     Section   @relation(fields: [sectionId], references: [id])
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  faculty     Faculty   @relation(fields: [facultyId], references: [id])
+  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  timeSlot    TimeSlot  @relation(fields: [timeSlotId], references: [id])
+}
+
+model ConflictLog {
+  id          String   @id @default(uuid())
+  timetableId String
+  severity    String   // HARD, SOFT
+  description String
+  createdAt   DateTime @default(now())
+
+  timetable   Timetable @relation(fields: [timetableId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // TIMETABLE_UPDATE, LEAVE_ALERT, ROOM_CHANGE
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  details   String
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id])
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
