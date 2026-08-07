@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { User, UserRole, TimetableData, Subject, Department, Classroom, Faculty, Student } from '../types';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = "https://ai-nep-timetable-generator-2.onrender.com";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
