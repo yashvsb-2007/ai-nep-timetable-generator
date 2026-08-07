@@ -3,13 +3,6 @@
 An AI-powered timetable generation system that automatically creates optimized university timetables based on the National Education Policy (NEP) 2020. The system reduces manual scheduling conflicts, efficiently allocates faculty and classrooms, and supports multidisciplinary course structures.
 
 ## 🚀 Live Demo
-
-### Frontend
-https://ai-nep-timetable.vercel.app/
-
-### Backend API
-https://ai-nep-timetable-generator-2.onrender.com/
-###live demo
 https://ai-nep-timetable-8c9lphbut-hackanova.vercel.app/
 
 ---
